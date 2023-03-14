@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=2]
+
+[ext_resource path="res://Turret.tscn" type="PackedScene" id=1]
+
+[node name="Turret" instance=ExtResource( 1 )]
+scale = Vector2( 1.5, 1.5 )
+fire_speed = 160
+
+[node name="Sprite" parent="." index="0"]
+modulate = Color( 0.494118, 0, 0, 1 )
