@@ -1,9 +1,5 @@
 extends Node2D
 
-# Healthbar is now dependant on a Health node, rather
-# than a player node, this means that Healthbar can be
-# used for anything that has a Health node, not just
-# player
 export(NodePath) var health_path
 onready var health : Health = get_node(health_path)
 

@@ -2,99 +2,44 @@ extends KinematicBody2D
 
 class_name Player
 
-onready var bullet_scene = preload("res://Bullet.tscn")
+var state : PlayerState
+
+onready var animated_sprite : AnimatedSprite = $AnimatedSprite
+onready var hit_sound : AudioStreamPlayer = $HitSound
 onready var health : Health = $Health
 
-var speed : int = 30
-var movement : Vector2
+# Godot 3.5 has trouble managing cyclical dependencies between classes,
+# this makes it difficult to have states return the next state on a state
+# change when they inherit from a common base class. Instead, we create
+# the states as Child nodes of the player, and get a reference to them 
+# here. States return a PlayerStateChange object which indicates what
+# state they should change to , and the player finds the existing state
+# object from this dictionary.
+onready var states : Dictionary = {
+	PlayerState.States.Normal  : $States/PlayerStateNormal,
+	PlayerState.States.Charging : $States/PlayerStateCharging,
+	PlayerState.States.Dashing : $States/PlayerStateDashing
+}
 
-const ChargeRate : float = 120.0
-const ChargeFriction : float = 0.75
-
-var is_dashing : bool = false 
-var is_charging : bool = false;
-var is_normal : bool = true;
-
-var dash_direction : Vector2
-var dash_force : float
-var charge_power : float
-
-onready var animation : AnimatedSprite = $AnimatedSprite
-
-func _process(delta):
-	if Input.is_action_pressed("charge") && !is_dashing:
-		is_charging = true
-		is_normal = false
-		is_dashing = false
-		charge_power += delta * ChargeRate
-		$AnimatedSprite.modulate = Color.red
-	elif is_charging:
-		is_charging = false
-		is_dashing = true
-		is_normal = false
-		dash_force = charge_power
-		charge_power = 0
-		dash_direction = position.direction_to(get_global_mouse_position()).normalized()
+func _ready():
+	# Set a reference to the player on each state. Due to the order
+	# nodes initialize in, it's simplest to do this here.
+	for state in states.values():
+		state.set_player(self)
 		
-	if is_dashing:
-		$AnimatedSprite.modulate = Color(randf(), randf(), randf())
-		$AnimatedSprite.rotate(dash_force / 250)
-		move_and_slide(dash_direction * dash_force)
-		if get_slide_count() > 0:
-			var collision : KinematicCollision2D = get_slide_collision(0)
-			if collision != null:
-				if collision.collider.is_in_group("turret"):
-					collision.collider.queue_free()
-				dash_direction = dash_direction.bounce(collision.normal)
-
-		dash_force = dash_force * (1-ChargeFriction*delta)
-		if dash_force < 15:
-			is_dashing = false
-			is_normal = true
-			is_charging = false
-			$AnimatedSprite.rotation = 0
-			$AnimatedSprite.modulate = Color.white
-		
-	if is_normal:
-		var last_movement : Vector2 = movement
-		movement = Vector2.ZERO
-		if Input.is_action_pressed("ui_up"):
-			movement.y=-1
-		if Input.is_action_pressed("ui_down"):
-			movement.y=1
-		if Input.is_action_pressed("ui_left"):
-			movement.x=-1
-		if Input.is_action_pressed("ui_right"):
-			movement.x=1
-		movement = movement.normalized()
-		if movement != last_movement:
-			_update_animation()
-		move_and_slide(movement * speed)
+	# Start in the normal state
+	state = states[PlayerState.States.Normal] as PlayerState
+	state.on_enter({})
 	
-	if is_normal && Input.is_action_just_pressed("click"):
-		var bullet : Bullet = bullet_scene.instance()
-		owner.add_child(bullet)
-		bullet.bullet_owner = self
-		bullet.speed*=2
-		bullet.direction = position.direction_to(get_global_mouse_position())
-		bullet.global_position = global_position
-
-func _update_animation() -> void:
-	if movement.y > 0:
-		animation.play("down")
-	elif movement.y < 0:
-		animation.play("up")
-	elif movement.x > 0:
-		animation.play("right")
-	elif movement.x < 0:
-		animation.play("left")
-	else:
-		animation.play("idle")
+func _process(delta):
+	var state_change : PlayerStateChange = state.on_process(delta)
+	# If a state change has been returned, get the new state from
+	# the states dictionary, set it as the current state and call
+	# enter, passing in any state change data provided from the 
+	# previous state
+	if state_change!=null:
+		state = states[state_change.state] as PlayerState
+		state.on_enter(state_change.data) 
 
 func hit() -> void:
-	if is_dashing:
-		return
-	health.take_damage()
-	if health.health>0:
-		$HitSound.play()
-
+	state.on_hit()
