@@ -13,7 +13,7 @@ func _physics_process(delta):
 	position += direction * speed * delta
 
 func on_body_entered(body: Node):
-	if body.is_queued_for_deletion():
+	if !is_instance_valid(body):
 		return
 	if body.is_in_group("player") && bullet_owner.is_in_group("turret"):
 		body.hit()

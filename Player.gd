@@ -92,7 +92,8 @@ func _update_animation() -> void:
 		animation.play("idle")
 
 func hit() -> void:
-
+	if is_dashing:
+		return
 	health.take_damage()
 	if health.health>0:
 		$HitSound.play()
