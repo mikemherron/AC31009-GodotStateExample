@@ -1,0 +1,4 @@
+## AC31009 Week 10 - The State Design Pattern - Godot Example
+This the small sample project used in the Week 10 seminar on The State Design Pattern. 
+
+The `main` branch contains the initial version of the charge and dash mechanic in the Player node. In the `refactor-states` branch, the code has been refactored to use the state pattern. In this version, each state is represented as it's own class and the Player node delgates to the state. Note that Godot 3.5 has trouble managing cyclical dependencies between classes, this makes it difficult to have states return the next state on a state change when they inherit from a common base class (as in the Unity example). Instead, we create the states as child nodes of the player, and reuse the same instance whenever we need to change state. States return a PlayerStateChange object which indicates what the state should change to, and the Player node finds the existing state object.
